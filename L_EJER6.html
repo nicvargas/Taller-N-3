@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<meta charset="utf-8" />
+
+<head>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.6.0/dist/leaflet.js"></script>
+    <script type="text/javascript" src="ciudades.js"></script>
+    <script type="text/javascript" src="departamentos.js"></script>
+    <script type="text/javascript" src="paises.js"></script>
+    <!-- Incluir librería Leaflet.markercluster -->
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.css" />
+    <link rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/MarkerCluster.Default.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.4.1/leaflet.markercluster.js"></script>
+    <!-- Incluir  Minimapa -->
+    <link rel="stylesheet" href="src/Control.MiniMap.css" />
+    <link rel="stylesheet" href="src/leaflet-search.css" />
+    <script src="src/Control.MiniMap.js" type="text/javascript"></script>
+    <script src="src/leaflet-search.js" type="text/javascript"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-search/dist/leaflet.control-search.min.css" />
+    <script src="https://unpkg.com/leaflet-control-search/dist/leaflet.control-search.min.js"></script>
+
+    <style>
+        #map {
+            width: 100%;
+            height: 800px;
+            box-shadow: 5px 5px 5px #888;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="map"></div>
+    <script>
+
+
+        //Capa base
+        var map = new L.Map('map');
+        var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        var osmAttrib = 'Map data &copy; OpenStreetMap contributors';
+        var osm = new L.TileLayer(osmUrl, { minZoom: 5, maxZoom: 18, attribution: osmAttrib });
+        map.addLayer(osm);
+        map.setView(new L.LatLng(4.65234845538715, -73.22956956545393), 2);
+
+
+
+
+
+        //Estilo Ciudad 
+        var ciudadStyle = function (feature) {
+            if (feature.properties.CAPITAL == "S") {
+                return {
+                    radius: 5.0,
+                    fillColor: "#ff0000",
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                };
+            } else {
+                return {
+                    radius: 5.0,
+                    fillColor: "#008000",
+                    color: "#000",
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                };
+            }
+        };
+
+        //Color Departamentos 
+        function getColorDepartamentos(d) {
+            return d > 100000000000 ? '#003F2F' :
+                d > 50000000000 ? '#fcae91' :
+                    d > 10000000000 ? '#fb6a4a' :
+                        '##8B5742';
+        }
+
+        //Color Paises 
+        function getColor(d) {
+            return d > 100000000 ? '#800026' :
+                d > 50000000 ? '#BD0026' :
+                    d > 20000000 ? '#E31A1C' :
+                        d > 10000000 ? '#FC4E2A' :
+                            d > 5000000 ? '#FD8D3C' :
+                                d > 2000000 ? '#FEB24C' :
+                                    d > 1000000 ? '#FED976' :
+                                        '#FFEDA0';
+        };
+
+
+        //Estilo Paises
+        function style(feature) {
+            return {
+                fillColor: getColor(feature.properties.pop_est),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '3',
+                fillOpacity: 0.7
+            };
+        }
+        //Estilo departamentos
+        function styledepa(feature) {
+            return {
+                fillColor: getColorDepartamentos(feature.properties.SHAPE_AREA),
+                weight: 2,
+                opacity: 1,
+                color: 'white',
+                dashArray: '2',
+                fillOpacity: 0.7
+            };
+        }
+
+
+        //Agregar paises 
+        var paisesLayer = L.geoJson(paises, {
+            style: style,
+        }).addTo(map);
+
+        var paisesLayer2 = L.geoJson(paises, {
+            style: style,
+        });
+
+
+        //Agregar Departamentos 
+        var departamentosLayer = L.geoJson(departamentos, {
+            style: styledepa
+        }).addTo(map);
+
+        var departamentosLayer2 = L.geoJson(departamentos, {
+            style: styledepa
+        });
+
+
+
+
+        //Punto Cluster:
+        // Inicializar Leaflet.markercluster para la capa "ciudades"
+        var markers = L.markerClusterGroup();
+
+        var ciudadesLayer = L.geoJson(ciudades, {
+            pointToLayer: function (feature, latlng) {
+                var marker = L.circleMarker(latlng, ciudadStyle(feature));
+                marker.bindPopup(feature.properties.CIUDAD);
+                return marker;
+            }
+        }).addTo(markers);
+
+        markers.addTo(map);
+
+        var ciudadesLayer2 = L.geoJson(ciudades, {
+            pointToLayer: function (feature, latlng) {
+                var marker = L.circleMarker(latlng, ciudadStyle(feature));
+                marker.bindPopup(feature.properties.CIUDAD);
+                return marker;
+            }
+        }).addTo(markers);
+
+
+
+        //Punto de Control de capas
+        // Crear el control de capas y agregar las capas al mismo
+
+        var baseMaps = {
+            "Mapa osm": osm,
+            "Mapa base": map
+        };
+
+        var overlayMaps = {
+            "Países": paisesLayer,
+            "Departamentos": departamentosLayer,
+            "Ciudades": ciudadesLayer.addTo(map)
+        };
+
+
+        // Agregar control de capas al mapa
+        var layerControl = L.control.layers(baseMaps, overlayMaps).addTo(map);
+
+
+        // Detectar cambios en la selección de capas
+        map.on('overlayremove', function (e) {
+            if (e.name === 'Ciudades') {
+                map.removeLayer(markers);
+            }
+        });
+
+        // Detectar cambios en la selección de capas
+        map.on('overlayadd', function (e) {
+            if (e.name === 'Ciudades') {
+                map.addLayer(markers);
+            }
+        });
+
+
+
+
+
+        var searchControl = new L.Control.Search({
+            layer: paisesLayer,
+            propertyName: 'name',
+            circleLocation: false
+        });
+
+        searchControl.on('search_locationfound', function (e) {
+            e.layer.setStyle({ fillColor: '#3f0', color: '#0f0' });
+        })
+            .on('search_collapsed', function (e) {
+                paisesLayer.eachLayer(function (layer) { //restauramos el color del elemento
+                    paisesLayer.resetStyle(layer);
+                });
+            });
+
+        map.addControl(searchControl);
+
+        var osm2 = new L.TileLayer(osmUrl, { minZoom: 0, maxZoom: 13, attribution: osmAttrib });
+        var layers = new L.LayerGroup([osm2, paisesLayer2, departamentosLayer2, ciudadesLayer2]);
+        var miniMap = new L.Control.MiniMap(layers, { toggleDisplay: true }).addTo(map);
+
+
+    </script>
+
+</body>
+
+</html>
